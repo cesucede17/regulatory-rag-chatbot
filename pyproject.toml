@@ -1,0 +1,105 @@
+[project]
+name = "tambora-chatbot"
+version = "3.0.0"
+description = "Chatbot BOE con RAG: consulta del Boletin Oficial del Estado y de normativa tecnica en PDF"
+readme = "README.md"
+requires-python = ">=3.11"
+
+# Versiones fijadas a las que llevaban funcionando en Tambora_servidor (su
+# uv.lock). Mover la herramienta a su propio proyecto no deberia cambiar de
+# paso todo el stack: con las ultimas, `langsmith.wrap_anthropic` revienta
+# contra el cliente nuevo de anthropic ("'Anthropic' object has no attribute
+# 'completions'") y starlette >=1.6 cambia la forma de `app.routes`.
+# Para subir algo, subelo a proposito y pasa la suite.
+dependencies = [
+    # LLM
+    "anthropic==0.96.0",
+    "langsmith==0.7.33",
+    # RAG: embeddings locales + base vectorial + troceado de PDFs
+    "chromadb==1.5.8",
+    "sentence-transformers==5.4.1",
+    # torch se declara AQUI aunque solo lo use sentence-transformers por
+    # dentro. Sin declararlo como dependencia directa, [tool.uv.sources] no
+    # se le aplica -- uv solo redirige las directas -- y seguiria bajando la
+    # rueda con CUDA de PyPI. La version es la que ya resolvia el lock.
+    "torch==2.14.0",
+    "langchain==1.2.15",
+    "langchain-community==0.4.1",
+    "langchain-text-splitters==1.1.2",
+    "pypdf==6.10.2",
+    # Servidor y plantillas
+    "fastapi==0.136.0",
+    "uvicorn[standard]==0.44.0",
+    "jinja2==3.1.4",
+    "python-multipart==0.0.26",
+    # API del BOE
+    "httpx==0.28.1",
+    # Auth y persistencia
+    # authlib e itsdangerous entran con el SSO (2026-09-15): el baile OIDC
+    # guarda su "state" en request.session, asi que hace falta el
+    # SessionMiddleware de starlette, y ese necesita itsdangerous para firmar
+    # su cookie. Versiones FIJADAS a las que ya usan PALBE y el recibidor
+    # contra este mismo Keycloak 26: son las conocidas buenas, no las ultimas.
+    "authlib==1.8.0",
+    "itsdangerous==2.2.0",
+    "python-jose[cryptography]==3.5.0",
+    "passlib[bcrypt]==1.7.4",
+    "bcrypt==4.0.1",
+    "aiosqlite==0.22.1",
+    # Verificacion diaria del BOE en segundo plano
+    "apscheduler==3.11.2",
+    # Contextos de equipo (lee contexto/Prompt BOE.docx)
+    "python-docx==1.2.0",
+    "python-dotenv==1.2.2",
+]
+
+# --- torch SIN CUDA en Linux ---------------------------------------------
+# Medido el 2026-09-15: la rueda por defecto de torch para Linux arrastra el
+# stack entero de CUDA de NVIDIA -- cublas, cudnn, cufft, cusolver, cusparse,
+# nvjitlink... -- y con ello la imagen del contenedor se fue a 7,42 GB. En un
+# servidor SIN GPU eso son varios gigas de bibliotecas que nunca se cargan, y
+# de hecho llenaron el disco a mitad del build.
+#
+# El marcador limita el cambio a Linux: en el portatil, donde la rueda por
+# defecto de Windows ya es solo CPU, no cambia nada. Los embeddings se
+# calculan en CPU en los dos sitios, asi que los vectores son identicos y la
+# base vectorial ya construida sigue valiendo.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[dependency-groups]
+dev = [
+    "pytest==9.0.3",
+    "pytest-asyncio==1.4.0",
+    "ruff==0.15.11",
+    "black==26.3.1",
+    "pyright>=1.1.390",
+]
+
+[tool.pytest.ini_options]
+addopts = "-p no:cacheprovider"
+testpaths = ["tests"]
+norecursedirs = [
+    ".venv",
+    ".claude",
+    ".ruff_cache",
+    ".pytest_cache",
+    "data",
+    "vectordb",
+    "__pycache__",
+]
+asyncio_mode = "auto"
+
+[tool.ruff]
+exclude = [
+    ".venv",
+    ".ruff_cache",
+    ".pytest_cache",
+    "data",
+    "vectordb",
+]

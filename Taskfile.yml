@@ -1,0 +1,35 @@
+# Comandos estándar del módulo (spec de estructura, §La forma estándar).
+# Desde la raíz del repo: task test -- tambora
+version: "3"
+
+tasks:
+  setup:
+    desc: Instala las dependencias (uv)
+    cmds:
+      - uv sync
+
+  dev:
+    desc: Servidor local con recarga. Necesita .env con las TAMBORA_SSO_*
+    cmds:
+      - uv run python -m uvicorn chatbot.main:app --app-dir src --reload --host 127.0.0.1 --port 8501
+
+  test:
+    desc: Tests unitarios y de integración (pytest)
+    cmds:
+      - uv run pytest -q
+
+  lint:
+    desc: Ruff 0.15.11, errores y formato
+    cmds:
+      - uv run ruff check .
+      - uv run ruff format --check .
+
+  build:
+    desc: Imagen Docker del módulo
+    cmds:
+      - docker compose build
+
+  health:
+    desc: Pregunta a /health del servidor local
+    cmds:
+      - curl -fsS http://localhost:8501/health

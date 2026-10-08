@@ -1,0 +1,32 @@
+# Lo que NO entra en la imagen. Cada linea con su motivo, porque un
+# .dockerignore mal puesto se nota como una imagen de tres gigas o como un
+# secreto donde no debe estar.
+
+# El entorno del portatil: 1,3 GB de ruedas de Windows que no sirven en
+# Linux. La imagen construye el suyo con uv sync.
+.venv
+
+# Claves reales. Las de verdad llegan por el entorno del contenedor.
+.env
+.env.local
+
+# Datos de ejecucion: la base SQLite, los PDFs subidos y la base vectorial
+# viven en volumenes, no en la imagen. Meterlos aqui congelaria el estado de
+# un dia dentro de cada despliegue.
+data
+vectordb
+
+# Tests y documentacion: no se ejecutan en el servidor y engordan la imagen.
+tests
+docs
+
+# Cachés y basura de desarrollo
+__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+*.log
+run.ps1
+
+# Sondas manuales
+scripts/adhoc
